@@ -62,7 +62,7 @@ public class PlayerMovement : MonoBehaviour
             isGrounded = false;
 
             // Obrót gracza przy skoku, imituj¹cy salto z zachowaniem rotacji 90 stopni w osi X
-            transform.Rotate(Vector3.right * 360f, Space.Self);
+            StartCoroutine(PerformFlip());
         }
         else if (isGrounded)
         {
@@ -77,6 +77,27 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    IEnumerator PerformFlip()
+    {
+        // Zapisanie pocz¹tkowej rotacji
+        Quaternion startRotation = transform.rotation;
+        Quaternion endRotation = startRotation * Quaternion.Euler(360, 0, 0);
+
+        float flipDuration = 0.5f; // Czas trwania salta
+        float elapsedTime = 0f;
+
+        while (elapsedTime < flipDuration)
+        {
+            // Interpolacja rotacji od startRotation do endRotation w czasie
+            transform.rotation = Quaternion.Lerp(startRotation, endRotation, elapsedTime / flipDuration);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        // Ustawienie koñcowej rotacji, aby upewniæ siê, ¿e rotacja jest dok³adna
+        transform.rotation = endRotation;
+    }
+
     void Dash()
     {
         if (Input.GetButtonDown("Dash") && canDash)
@@ -85,7 +106,8 @@ public class PlayerMovement : MonoBehaviour
 
             if (dashDirection != Vector3.zero)
             {
-                rb.velocity = dashDirection * dashSpeed;
+                // Nag³e na³o¿enie si³y na kapsu³ê w kierunku dasha
+                rb.AddForce(dashDirection * dashSpeed, ForceMode.Impulse);
                 isDashing = true; // Ustawienie flagi, ¿e gracz wykonuje dash
                 canDash = false;
 
