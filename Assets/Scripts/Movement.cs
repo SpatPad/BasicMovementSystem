@@ -1,20 +1,19 @@
 using UnityEngine;
+using System.Collections;
 
 public class PlayerMovement : MonoBehaviour
 {
     public float moveSpeed = 5f;
+    public float sprintingMultiplier = 2.5f;
     public float jumpForce = 5f;
     public float dashSpeed = 10f;
-    public float slideSpeed = 7f;
     public float momentumMultiplier = 1.5f;
     public float dashCooldown = 0.5f;
-    public float slideCooldown = 0.5f;
 
     private Rigidbody rb;
     private bool isGrounded = true;
+    private bool isSprinting = false;
     private bool canDash = true;
-    private bool canSlide = true;
-    private bool isSliding = false;
     private bool isDashing = false; // Flaga do œledzenia dasha
     private float momentum = 1f;
 
@@ -30,7 +29,7 @@ public class PlayerMovement : MonoBehaviour
         Move();
         Jump();
         Dash();
-        Slide();
+        Squeeze();
     }
 
     void Move()
@@ -48,11 +47,17 @@ public class PlayerMovement : MonoBehaviour
             transform.rotation = targetRotation;
         }
 
+
         // Dodanie ruchu w osi Y (skok) do wektora ruchu
         movement.y = rb.velocity.y;
 
         rb.velocity = movement;
     }
+    void Sprint() 
+    {
+        
+    }
+
 
     void Jump()
     {
@@ -61,8 +66,14 @@ public class PlayerMovement : MonoBehaviour
             rb.velocity = new Vector3(rb.velocity.x, jumpForce * momentum, rb.velocity.z);
             isGrounded = false;
 
-            // Obrót gracza przy skoku, imituj¹cy salto z zachowaniem rotacji 90 stopni w osi X
-            StartCoroutine(PerformFlip());
+            // Oblicz kierunek ruchu na podstawie prêdkoœci gracza
+            Vector3 moveDirection = new Vector3(rb.velocity.x, 0, rb.velocity.z).normalized;
+
+            // Jeœli gracz siê porusza, wykonaj salto w kierunku ruchu
+            if (moveDirection != Vector3.zero)
+            {
+                StartCoroutine(PerformFlip(moveDirection));
+            }
         }
         else if (isGrounded)
         {
@@ -77,11 +88,13 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    IEnumerator PerformFlip()
+    IEnumerator PerformFlip(Vector3 direction)
     {
         // Zapisanie pocz¹tkowej rotacji
         Quaternion startRotation = transform.rotation;
-        Quaternion endRotation = startRotation * Quaternion.Euler(360, 0, 0);
+
+        // Obrót o 360 stopni wokó³ osi odpowiadaj¹cej kierunkowi ruchu
+        Quaternion endRotation = startRotation * Quaternion.AngleAxis(360, direction);
 
         float flipDuration = 0.5f; // Czas trwania salta
         float elapsedTime = 0f;
@@ -107,7 +120,7 @@ public class PlayerMovement : MonoBehaviour
             if (dashDirection != Vector3.zero)
             {
                 // Nag³e na³o¿enie si³y na kapsu³ê w kierunku dasha
-                rb.AddForce(dashDirection * dashSpeed, ForceMode.Impulse);
+                rb.AddForce(dashDirection * dashSpeed);
                 isDashing = true; // Ustawienie flagi, ¿e gracz wykonuje dash
                 canDash = false;
 
@@ -119,29 +132,18 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    void Slide()
+    void Squeeze()
     {
-        if (Input.GetButtonDown("Slide") && canSlide && isGrounded)
+        if (Input.GetButtonDown("Squeeze"))
         {
-            isSliding = true;
-            Vector3 slideDirection = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical")).normalized;
-
-            if (slideDirection != Vector3.zero)
-            {
-                rb.velocity = slideDirection * slideSpeed;
-                canSlide = false;
-
-                // Obrót gracza przy œlizgu z zachowaniem rotacji 90 stopni w osi X
-                transform.rotation = Quaternion.LookRotation(slideDirection) * Quaternion.Euler(90, 0, 0);
-
-                Invoke("ResetSlide", slideCooldown);
-            }
+            // Œciœnij kapsu³ê poprzez zmianê skali
+            transform.localScale = new Vector3(1.5f, transform.localScale.y, 0.5f);
         }
 
-        if (isSliding && Input.GetButtonUp("Slide"))
+        if (Input.GetButtonUp("Squeeze"))
         {
-            isSliding = false;
-            canSlide = true;
+            // Przywróæ oryginaln¹ skalê kapsu³y
+            transform.localScale = new Vector3(1f, transform.localScale.y, 1f);
         }
     }
 
@@ -165,8 +167,4 @@ public class PlayerMovement : MonoBehaviour
         isDashing = false; // Resetowanie flagi dasha
     }
 
-    void ResetSlide()
-    {
-        canSlide = true;
-    }
 }
