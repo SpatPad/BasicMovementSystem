@@ -4,7 +4,6 @@ using System.Collections;
 public class PlayerMovement : MonoBehaviour
 {
     public float moveSpeed = 5f;
-    public float sprintingMultiplier = 2.5f;
     public float jumpForce = 5f;
     public float dashSpeed = 10f;
     public float momentumMultiplier = 1.5f;
@@ -12,7 +11,6 @@ public class PlayerMovement : MonoBehaviour
 
     private Rigidbody rb;
     private bool isGrounded = true;
-    private bool isSprinting = false;
     private bool canDash = true;
     private bool isDashing = false; // Flaga do œledzenia dasha
     private float momentum = 1f;
@@ -30,6 +28,7 @@ public class PlayerMovement : MonoBehaviour
         Jump();
         Dash();
         Squeeze();
+        Flatten();
     }
 
     void Move()
@@ -53,10 +52,7 @@ public class PlayerMovement : MonoBehaviour
 
         rb.velocity = movement;
     }
-    void Sprint() 
-    {
-        
-    }
+
 
 
     void Jump()
@@ -69,11 +65,7 @@ public class PlayerMovement : MonoBehaviour
             // Oblicz kierunek ruchu na podstawie prêdkoœci gracza
             Vector3 moveDirection = new Vector3(rb.velocity.x, 0, rb.velocity.z).normalized;
 
-            // Jeœli gracz siê porusza, wykonaj salto w kierunku ruchu
-            if (moveDirection != Vector3.zero)
-            {
-                StartCoroutine(PerformFlip(moveDirection));
-            }
+            
         }
         else if (isGrounded)
         {
@@ -88,28 +80,6 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    IEnumerator PerformFlip(Vector3 direction)
-    {
-        // Zapisanie pocz¹tkowej rotacji
-        Quaternion startRotation = transform.rotation;
-
-        // Obrót o 360 stopni wokó³ osi odpowiadaj¹cej kierunkowi ruchu
-        Quaternion endRotation = startRotation * Quaternion.AngleAxis(360, direction);
-
-        float flipDuration = 0.5f; // Czas trwania salta
-        float elapsedTime = 0f;
-
-        while (elapsedTime < flipDuration)
-        {
-            // Interpolacja rotacji od startRotation do endRotation w czasie
-            transform.rotation = Quaternion.Lerp(startRotation, endRotation, elapsedTime / flipDuration);
-            elapsedTime += Time.deltaTime;
-            yield return null;
-        }
-
-        // Ustawienie koñcowej rotacji, aby upewniæ siê, ¿e rotacja jest dok³adna
-        transform.rotation = endRotation;
-    }
 
     void Dash()
     {
@@ -120,7 +90,7 @@ public class PlayerMovement : MonoBehaviour
             if (dashDirection != Vector3.zero)
             {
                 // Nag³e na³o¿enie si³y na kapsu³ê w kierunku dasha
-                rb.AddForce(dashDirection * dashSpeed);
+                rb.AddForce(dashDirection * dashSpeed, ForceMode.VelocityChange);
                 isDashing = true; // Ustawienie flagi, ¿e gracz wykonuje dash
                 canDash = false;
 
@@ -132,12 +102,27 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    void Flatten()
+    {
+        if (Input.GetButtonDown("Flatten"))
+        {
+            // Œciœnij kapsu³ê poprzez zmianê skali
+            transform.localScale = new Vector3(1.5f, transform.localScale.y, 0.5f);
+        }
+
+        if (Input.GetButtonUp("Flatten"))
+        {
+            // Przywróæ oryginaln¹ skalê kapsu³y
+            transform.localScale = new Vector3(1f, transform.localScale.y, 1f);
+        }
+    }
+
     void Squeeze()
     {
         if (Input.GetButtonDown("Squeeze"))
         {
             // Œciœnij kapsu³ê poprzez zmianê skali
-            transform.localScale = new Vector3(1.5f, transform.localScale.y, 0.5f);
+            transform.localScale = new Vector3(0.5f, transform.localScale.y, 1.5f);
         }
 
         if (Input.GetButtonUp("Squeeze"))
@@ -154,11 +139,6 @@ public class PlayerMovement : MonoBehaviour
             isGrounded = true;
         }
 
-        // Sprawdzenie, czy gracz wykonuje dash oraz czy koliduje z przeciwnikiem
-        if (collision.gameObject.CompareTag("Enemy") && isDashing)
-        {
-            Destroy(collision.gameObject);
-        }
     }
 
     void ResetDash()
